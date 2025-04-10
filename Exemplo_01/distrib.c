@@ -4,9 +4,9 @@
 
 int main(void)
 {
-    double X[8], Y[8], Z[8];
+    double X[32], Y[32], Z[32];
 
-    for(int i = 0; i < 8; i++)
+    for(int i = 0; i < 32; i++)
     {
         X[i] = i;
         Y[i] = i * 2;
@@ -14,7 +14,7 @@ int main(void)
 
     double start, stop;
     start = omp_get_wtime();
-    for(int i = 0; i < 8; i++)
+    for(int i = 0; i < 32; i++)
     {
         Z[i] = X[i] + Y[i];
     }
@@ -22,7 +22,7 @@ int main(void)
     printf("Tempo sequencial: %f\n", stop - start);
     
     start = omp_get_wtime();
-    #pragma omp parallel num_threads(8)
+    #pragma omp parallel num_threads(32)
     {
         int i = omp_get_thread_num();
         Z[i] = X[i] + Y[i];   

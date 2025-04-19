@@ -31,23 +31,10 @@ int main(int argc, char * argv[])
     int size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    /*
-    MPI_Comm_rank(
-        MPI_Comm communicator,
-        int* rank)
-    */
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    /*
-    MPI_Send(
-        void* data,
-        int count,
-        MPI_Datatype datatype,
-        int destination,
-        int tag,
-        MPI_Comm communicator)
-    */
+
 
     if(rank == 0)
     {
@@ -67,34 +54,14 @@ int main(int argc, char * argv[])
             return 1;
         }
         fclose(fp);
-        
-        // Enviando os parâmetros para os outros ranks
-        for(int dest = 1; dest < size; dest++)
-        {
-            MPI_Send(&a, 1, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
-            MPI_Send(&b, 1, MPI_DOUBLE, dest, 1, MPI_COMM_WORLD);
-            MPI_Send(&n, 1, MPI_INT, dest, 2, MPI_COMM_WORLD);
-        }
     }
-    /*
-    MPI_Recv(
-        void* data,
-        int count,
-        MPI_Datatype datatype,
-        int source,
-        int tag,
-        MPI_Comm communicator,
-        MPI_Status* status)
-    */
-    else
-    {
-        MPI_Status status;
-        MPI_Recv(&a, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
-        MPI_Recv(&b, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &status);
-        MPI_Recv(&n, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, &status);
-    }
+    
+    MPI_Bcast(&a, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&b, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     stop = omp_get_wtime();
     double t1 = stop - start, t2, t3;
+    
     // calculando o parametros para o processamento
     double local_a, local_b, h;
     h = (b - a)/size;
@@ -103,16 +70,12 @@ int main(int argc, char * argv[])
     
     // calcular a integral
     integral = integraTrap(local_a, local_b, n/size);
-    if(rank == 0)
-    {
-        double integral_par;
-        MPI_Status status;
-        for(int orig = 1; orig < size; orig++)
-        {
-            MPI_Recv(&integral_par, 1, MPI_DOUBLE, orig, 0, MPI_COMM_WORLD, &status);
-            integral += integral_par;
-        }
-        // saída
+    
+    double integral_tot;
+    MPI_Reduce(&integral, &integral_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    
+    if(rank == 0){
+        integral = integral_tot;
         stop = omp_get_wtime();
         t2 = stop - start;
         printf("Com n=%d trapezios, a estimativa da\n", n);
@@ -128,10 +91,7 @@ int main(int argc, char * argv[])
         printf("Tempo de cálculo: %.12f\n", t2 - t1);
         printf("Tempo total: %.12f\n", t3);
     }
-    else
-    {
-        MPI_Send(&integral, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-    }
+    
     MPI_Finalize(); 
     return 0;
 }

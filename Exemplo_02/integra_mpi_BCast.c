@@ -31,23 +31,10 @@ int main(int argc, char * argv[])
     int size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    /*
-    MPI_Comm_rank(
-        MPI_Comm communicator,
-        int* rank)
-    */
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    /*
-    MPI_Send(
-        void* data,
-        int count,
-        MPI_Datatype datatype,
-        int destination,
-        int tag,
-        MPI_Comm communicator)
-    */
+
 
     if(rank == 0)
     {
@@ -67,34 +54,14 @@ int main(int argc, char * argv[])
             return 1;
         }
         fclose(fp);
-        
-        // Enviando os parâmetros para os outros ranks
-        for(int dest = 1; dest < size; dest++)
-        {
-            MPI_Send(&a, 1, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
-            MPI_Send(&b, 1, MPI_DOUBLE, dest, 1, MPI_COMM_WORLD);
-            MPI_Send(&n, 1, MPI_INT, dest, 2, MPI_COMM_WORLD);
-        }
     }
-    /*
-    MPI_Recv(
-        void* data,
-        int count,
-        MPI_Datatype datatype,
-        int source,
-        int tag,
-        MPI_Comm communicator,
-        MPI_Status* status)
-    */
-    else
-    {
-        MPI_Status status;
-        MPI_Recv(&a, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
-        MPI_Recv(&b, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &status);
-        MPI_Recv(&n, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, &status);
-    }
+    
+    MPI_Bcast(&a, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&b, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     stop = omp_get_wtime();
     double t1 = stop - start, t2, t3;
+    
     // calculando o parametros para o processamento
     double local_a, local_b, h;
     h = (b - a)/size;

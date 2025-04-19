@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     double integral = 0.0, a, b;
     int n;
     // Leitura dos parâmetros de entrada
+    double start = omp_get_wtime();
     fp = fopen("parametros.csv", "r");
     if (fp == NULL)
     {
@@ -27,11 +28,13 @@ int main(int argc, char *argv[])
         return 1;
     }
     fclose(fp);
-    double start = omp_get_wtime();
+    double stop = omp_get_wtime();
+    double t1 = stop - start;
     // calcular a integral
     integral = integraTrap(a, b, n);
     // saída
-    double stop = omp_get_wtime();
+    stop = omp_get_wtime();
+    double t2 = stop - start;
     printf("Com n=%d trapezios, a estimativa é\n", n);
     printf("integral de %.2f a %.2f e: %.12f\n", a, b, integral);
     //printf("f(%.12f) = %.12f, f(%.12f) = %.12f\n", a, b, int_f(a), int_f(b));
@@ -39,7 +42,12 @@ int main(int argc, char *argv[])
     double eAbs = fabs(integral - integralR);
     double eRel = eAbs/integralR;
     printf("O valor exato é de %.12f, Erel %.12f, Eabs %.12f\n", integralR, eRel, eAbs);
-    printf("Tempo: %.12f\n", stop - start);
+    stop = omp_get_wtime();
+    double t3 = stop - start;
+    printf("Tempo de leitura: %.12f\n", t1);
+    printf("Tempo até o cálculo: %.12f\n", t2);
+    printf("Tempo de cálculo: %.12f\n", t2 - t1);
+    printf("Tempo total: %.12f\n", t3);
     return 0;
 }
 

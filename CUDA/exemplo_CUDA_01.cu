@@ -5,7 +5,8 @@
 
 #define MSIZE 64
 
-__global__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C);
+__host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C);
+__global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C)
 
 int main(int argc, char **argv)
 {
@@ -37,11 +38,8 @@ int main(int argc, char **argv)
         printf("\n");
     }
 
-    // Calcular o GEMM no device
-    // Definir a grade que se deseja utilizar
-    dim3 dimGrade(MSIZE/32, MSIZE/32);
-    dim3 dimBloco(32, 32);
-    dgemmCUDA<<<dimGrade, dimBloco>>>(alpha, A, B, beta, C);
+    // Calcular o GEMM
+    dgemmCUDA(alpha, A, B, beta, C);
 
     // I/O para guardar os resultados
     for (int i = 0; i < MSIZE; i++)
@@ -59,7 +57,7 @@ int main(int argc, char **argv)
 }
 
 
-__global__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C)
+__host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C)
 {
     int tSize = MSIZE * MSIZE * sizeof(double))
     double* Ad, Bd, Cd;
@@ -80,8 +78,6 @@ __global__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double
         printf("Erro alocando C!!\n");
         return 1;
     }
-
-    
 
     // Copiar as matrizes do host para os respectivos espços de memória no divice
     cudaError_t cudaErro;
@@ -104,13 +100,13 @@ __global__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double
         return 2;
     }
 
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-    double cValue = 0.0;
-    for(int k = 0; k < MSIZE; k++)
-        cValue += Ad[i*MSIZE + k] * Bd[k * MSIZE + j];
-    Cd[i*MSIZE + j] = alpha * cValue + beta * Cd[i*MSIZE + j];
-        ]
+    // Definir a grade que se deseja utilizar
+    dim3 dimGrade(MSIZE/32, MSIZE/32);
+    dim3 dimBloco(32, 32);
+
+    // Chamada ao kernel que implementa a GEMM
+    k_dgemm<<<dimGrade, dimBloco>>>(alpha, A, B, beta, C);
+
     // copiar a matriz resultante do device para o espaço de meória do host
     cudaErro = cudaMemcpy(C, Cd, tSize, cudaMemcpyDeviceToHost);
     if(cudaErro != cudaSuccess)
@@ -124,5 +120,14 @@ __global__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double
     cudaFree(Bd);
     cudaFree(Cd);
     return 0;
+}
 
+__global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C)
+{
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y;
+    double cValue = 0.0;
+    for(int k = 0; k < MSIZE; k++)
+        cValue += A[i*MSIZE + k] * B[k * MSIZE + j];
+    C[i*MSIZE + j] = alpha * cValue + beta * C[i*MSIZE + j];
 }

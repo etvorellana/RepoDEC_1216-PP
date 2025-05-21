@@ -8,6 +8,13 @@
 #define MSIZE 4096
 
 void printMatrix(gsl_matrix *A);
+int blas_dgemm(CBLAS_TRANSPOSE_t TransA,
+               CBLAS_TRANSPOSE_t TransB,
+               double alpha,
+               const gsl_matrix *A,
+               const gsl_matrix *B,
+               double beta,
+               gsl_matrix *C);
 
 int main(int argc, char **argv)
 {
@@ -47,23 +54,9 @@ int main(int argc, char **argv)
     printMatrix(B);
     printf("Matriz C\n");
     printMatrix(C);
+
     start = omp_get_wtime();
-    #pragma omp parallel num_threads(2)
-    {
-        int meuId, quantProc;
-        meuId = omp_get_thread_num();
-        quantProc = omp_get_num_threads();
-        gsl_matrix_view Alv, Clv;
-        int nrows = A->size1/quantProc;
-        int ncols = A->size2;
-        int start_row = meuId * nrows;
-        Alv = gsl_matrix_submatrix(A, start_row, 0, nrows, ncols);
-        gsl_matrix *Al = &Alv.matrix;        
-        ncols = C->size2;
-        Clv = gsl_matrix_submatrix(C, start_row, 0, nrows, ncols);
-        gsl_matrix *Cl = &Clv.matrix;
-        gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, alpha, Al, B, beta, Cl);
-    }
+    blas_dgemm(CblasNoTrans, CblasNoTrans, alpha, A, B, beta, C);
     stop = omp_get_wtime();
     t2 = stop - start;
 
@@ -78,7 +71,7 @@ int main(int argc, char **argv)
     printf("Tempo de multiplicacao: %lf\n", t2);
     printf("Tempo de print: %lf\n", t3);
     printf("Tempo total: %lf\n", t1 + t2 + t3);
-    
+
     gsl_matrix_free(A);
     gsl_matrix_free(C);
     gsl_matrix_free(B);
@@ -99,16 +92,18 @@ void printMatrix(gsl_matrix *A)
     }
     ptr = A->data;
     lda = A->tda;
-    if(A->size1 <= 8 && A->size2 <= 8)
+    if (A->size1 <= 8 && A->size2 <= 8)
     {
         for (i = 0; i < A->size1; i++)
         {
             for (j = 0; j < A->size2; j++)
                 printf("%.1lf ", ptr[i * lda + j]);
-    
+
             printf("\n");
         }
-    }else{
+    }
+    else
+    {
         for (i = 0; i < 4; i++)
         {
             for (j = 0; j < 4; j++)
@@ -119,7 +114,7 @@ void printMatrix(gsl_matrix *A)
             printf("\n");
         }
         printf(" ... \n");
-        for(i = A->size1 - 4; i < A->size1; i++)
+        for (i = A->size1 - 4; i < A->size1; i++)
         {
             for (j = 0; j < 4; j++)
                 printf("%.1lf ", ptr[i * lda + j]);
@@ -129,4 +124,54 @@ void printMatrix(gsl_matrix *A)
             printf("\n");
         }
     }
+}
+
+int blas_dgemm(CBLAS_TRANSPOSE_t TransA,
+               CBLAS_TRANSPOSE_t TransB,
+               double alpha,
+               const gsl_matrix *A,
+               const gsl_matrix *B,
+               double beta,
+               gsl_matrix *C)
+{
+    size_t i, j, k;
+    double *ptrA, *ptrB, *ptrC;
+    size_t m, n, p;
+    m = A->size1;
+    n = B->size2;
+    p = A->size2;
+    
+    if (A->size2 != B->size1)
+    {
+        printf("Dimensoes invalidas\n");
+        return -1;
+    }
+    if (C->size1 != m || C->size2 != n)
+    {
+        printf("Dimensoes invalidas\n");
+        return -1;
+    }
+    if (A == NULL || B == NULL || C == NULL)
+    {
+        printf("Matriz nula\n");
+        return -1;
+    }
+    ptrA = A->data;
+    ptrB = B->data;
+    ptrC = C->data;
+    int idx, sizeC = C->size1 * C->size2;
+    for(idx = 0, ptrC = C->data; idx < sizeC; idx++, ptrC++)
+    {
+        i = idx / n;
+        j = idx % n;
+        double sum = 0.0;
+        for (k = 0; k < p; k++)
+        {
+            sum += ptrA[i * p + k] * ptrB[k * n + j];
+        }
+        *ptrC = alpha * sum + beta * (*ptrC);
+
+    }
+
+    return 0;
 }

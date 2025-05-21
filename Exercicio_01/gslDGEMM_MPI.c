@@ -9,7 +9,6 @@
 #define MSIZE 4096
 
 void printMatrix(gsl_matrix *A);
-void 
 
 int main(int argc, char **argv)
 {

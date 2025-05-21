@@ -6,7 +6,7 @@
 #define MSIZE 64
 
 __host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C);
-__global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C)
+__global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C);
 
 int main(int argc, char **argv)
 {
@@ -59,8 +59,8 @@ int main(int argc, char **argv)
 
 __host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C)
 {
-    int tSize = MSIZE * MSIZE * sizeof(double))
-    double* Ad, Bd, Cd;
+    int tSize = MSIZE * MSIZE * sizeof(double);
+    double *Ad, *Bd, *Cd;
 
     // Alocar memória para as matrizes no diveice
     if ( cudaSuccess != cudaMalloc((void**)&Ad, tSize))
@@ -105,7 +105,7 @@ __host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* 
     dim3 dimBloco(32, 32);
 
     // Chamada ao kernel que implementa a GEMM
-    k_dgemm<<<dimGrade, dimBloco>>>(alpha, A, B, beta, C);
+    k_dgemm<<<dimGrade, dimBloco>>>(alpha, Ad, Bd, beta, Cd);
 
     // copiar a matriz resultante do device para o espaço de meória do host
     cudaErro = cudaMemcpy(C, Cd, tSize, cudaMemcpyDeviceToHost);

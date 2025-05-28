@@ -136,10 +136,10 @@ void printMatrix(double *A, int n)
         return;
     }
     ptr = A;
-    lda = N;
+    lda = n;
     if(n <= 8)
     {
-        for (i = 0; i < N; i++)
+        for (i = 0; i < n; i++)
         {
             for (j = 0; j < n; j++)
                 printf("%.1lf ", ptr[i * lda + j]);
@@ -152,7 +152,7 @@ void printMatrix(double *A, int n)
             for (j = 0; j < 4; j++)
                 printf("%.1lf ", ptr[i * lda + j]);
             printf(" ... ");
-            for (j = A->size2 - 4; j < A->size2; j++)
+            for (j = n - 4; j < n; j++)
                 printf("%.1lf ", ptr[i * lda + j]);
             printf("\n");
         }

@@ -5,7 +5,7 @@
 // #include <gsl/gsl_rstat.h>
 #include <omp.h>
 
-#define MSIZE 4096
+#define MSIZE 8192
 
 void printMatrix(gsl_matrix *A);
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     printf("Matriz C\n");
     printMatrix(C);
     start = omp_get_wtime();
-    #pragma omp parallel num_threads(2)
+    #pragma omp parallel
     {
         int meuId, quantProc;
         meuId = omp_get_thread_num();

@@ -3,10 +3,11 @@
 #include <omp.h>
 #include <cuda_runtime.h>
 
-#define MSIZE 64
+#define MSIZE 8192
 
 __host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C);
 __global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C);
+void printMatrix(double *A, int n);
 
 int main(int argc, char **argv)
 {
@@ -30,25 +31,15 @@ int main(int argc, char **argv)
     }
     double alpha = 2.0, beta = 2.0;
 
-    for (int i = 0; i < MSIZE; i++)
-    {
-        for (int j = 0; j < MSIZE; j++)
-            printf("%.1lf ", C[i * MSIZE + j]);
-    
-        printf("\n");
-    }
+    printMatrix(C, MSIZE);
 
     // Calcular o GEMM
     dgemmCUDA(alpha, A, B, beta, C);
 
     // I/O para guardar os resultados
-    for (int i = 0; i < MSIZE; i++)
-    {
-        for (int j = 0; j < MSIZE; j++)
-            printf("%.1lf ", C[i * MSIZE + j]);
-    
-        printf("\n");
-    }
+    printf("________________________________________\n");
+    printMatrix(C, MSIZE);
+
     // Libera memória alocada
     free(A);
     free(B);
@@ -130,4 +121,50 @@ __global__ void k_dgemm(double alpha, double* A, double* B, double beta, double*
     for(int k = 0; k < MSIZE; k++)
         cValue += A[i*MSIZE + k] * B[k * MSIZE + j];
     C[i*MSIZE + j] = alpha * cValue + beta * C[i*MSIZE + j];
+}
+
+
+void printMatrix(double *A, int n)
+{
+    int i, j;
+    double *ptr;
+    size_t lda;
+
+    if (A == NULL)
+    {
+        printf("Matriz nula\n");
+        return;
+    }
+    ptr = A;
+    lda = N;
+    if(n <= 8)
+    {
+        for (i = 0; i < N; i++)
+        {
+            for (j = 0; j < n; j++)
+                printf("%.1lf ", ptr[i * lda + j]);
+    
+            printf("\n");
+        }
+    }else{
+        for (i = 0; i < 4; i++)
+        {
+            for (j = 0; j < 4; j++)
+                printf("%.1lf ", ptr[i * lda + j]);
+            printf(" ... ");
+            for (j = A->size2 - 4; j < A->size2; j++)
+                printf("%.1lf ", ptr[i * lda + j]);
+            printf("\n");
+        }
+        printf(" ... \n");
+        for(i = n - 4; i < n; i++)
+        {
+            for (j = 0; j < 4; j++)
+                printf("%.1lf ", ptr[i * lda + j]);
+            printf(" ... ");
+            for (j = n - 4; j < n; j++)
+                printf("%.1lf ", ptr[i * lda + j]);
+            printf("\n");
+        }
+    }
 }

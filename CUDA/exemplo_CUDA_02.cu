@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 
 #define MSIZE 8192
-#define BSIZE 16
+#define BSIZE 8
 
 __host__ int dgemmCUDA(double alpha, double* A, double* B, double beta, double* C);
 __global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C, int TILES);
@@ -135,10 +135,10 @@ __global__ void k_dgemm(double alpha, double* A, double* B, double beta, double*
 
     for (m=0, n = 0; m < TILES; m++, n += BSIZE){
         Ads[ti][tj] = A [i*MSIZE + n + tj];
-        Bds[tj][ti] = B [(n+ti)*MSIZE + j];
+        Bds[ti][tj] = B [(n+ti)*MSIZE + j];
         __syncthreads();
         for (k = 0; k < BSIZE; k++)
-            cValue += Ads[ti][k] * Bds[tj][k];
+            cValue += Ads[ti][k] * Bds[k][tj];
         __syncthreads();
     }
 

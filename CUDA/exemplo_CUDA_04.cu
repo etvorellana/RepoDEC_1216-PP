@@ -20,14 +20,15 @@
  *
  *
  */
- 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
-#include <cublas_v2.h>
 
 #define SIZE 8192
 #define BSIZE 16
+
+__global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C, int msize, int TILES);
 
 __host__ void dgemmCUDA( const char TA, const char TB,
 			const int M, const int N, const int K,
@@ -139,26 +140,13 @@ void dgemmCUDA( const char TA, const char TB,
 	if ( cudaSuccess != cudaErro)
 		printf( "Erro copiando C!\n" );
 
-	cublasHandle_t handle;
-    cublasStatus_t cublasErro;
-	cublasCreate(&handle);
-    /*
-    cublasStatus_t cublasDgemm(cublasHandle_t handle,
-                           cublasOperation_t transa, cublasOperation_t transb,
-                           int m, int n, int k,
-                           const double          *alpha,
-                           const double          *A, int lda,
-                           const double          *B, int ldb,
-                           const double          *beta,
-                           double          *C, int ldc)
-    */
-	cublasErro = cublasDgemm(  handle, 
-                                CUBLAS_OP_N, CUBLAS_OP_N, 
-                                M, N, K, &a, Ad, lda, Bd, ldb, &b, Cd, ldc);
-    if ( CUBLAS_STATUS_SUCCESS != cublasErro)
-        printf( "Erro no cublasDgemm!\n" );
+	int TILES = M/BSIZE;
 
-	cublasDestroy(handle);
+    dim3 dimGrade(TILES, TILES);
+    dim3 dimBloco(BSIZE, BSIZE);
+
+    // Chamada ao kernel que implementa a GEMM
+    k_dgemm<<<dimGrade, dimBloco>>>(a, Ad, Bd, b, Cd, M, TILES);
 
 
 	// Copiar a matriz resultante do divece para o host
@@ -171,4 +159,33 @@ void dgemmCUDA( const char TA, const char TB,
 	cudaFree(Cd);
 
 	return;
+}
+
+
+__global__ void k_dgemm(double alpha, double* A, double* B, double beta, double* C, int msize, int TILES)
+{
+    __shared__ double Ads[BSIZE][BSIZE];
+    __shared__ double Bds[BSIZE][BSIZE];
+
+    int tj = threadIdx.x;
+    int ti = threadIdx.y;
+    int bj = blockIdx.x;
+    int bi = blockIdx.y;
+
+    int i = bi*BSIZE + ti;
+    int j = bj*BSIZE + tj;
+    int m, n, k;
+
+    double cValue = 0.0;
+
+    for (m=0, n = 0; m < TILES; m++, n += BSIZE){
+        Ads[ti][tj] = A [i*msize + n + tj];
+        Bds[ti][tj] = B [(n+ti)*msize + j];
+        __syncthreads();
+        for (k = 0; k < BSIZE; k++)
+            cValue += Ads[ti][k] * Bds[k][tj];
+        __syncthreads();
+    }
+
+    C[i*msize + j] = alpha * cValue + beta * C[i*msize + j];
 }
